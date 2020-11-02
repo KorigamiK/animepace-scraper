@@ -151,11 +151,11 @@ class scraper:
 
         elif server == 'Theta-Original-v4':
             scraper._kickassanimex(self, link)
-            self.options.append('-O ' + (self.name + " " + self.episode + ".mp4").replace(" ", "_"))
+            self.options[-1] = '-O ' + (self.name + " " + self.episode + ".mp4").replace(" ", "_")
 
         elif server == 'Dr.Hoffmann':
             scraper._kickassanimex(self, link)
-            self.options.append('-O ' + (self.name + " " + self.episode + ".mp4").replace(" ", "_"))
+            self.options[-1] = '-O ' + (self.name + " " + self.episode + ".mp4").replace(" ", "_")
 
         elif server == 'Original-quality-v2':
             scraper._kickassanimev2(self, link)
@@ -165,10 +165,13 @@ class scraper:
 
         elif server == 'Beta-Server':
             scraper._kickassanimex(self, link)
-
+# betaserver1 doesn't work (no links)
         elif server == 'mobile-v2':
             scraper._betaserver(self, link)
-
+            
+        elif server == 'Theta-Original':
+            scraper._kickassanimex(self, link)
+            
         else:
             print('Not supported')
             print(self.server)
@@ -187,8 +190,11 @@ if __name__ == '__main__':
         for i in range(1, 5):
             a.orig_url = "https://www3.animepace.si/anime/akudama-drive/episode-0{}".format(i)
             serverlink = a.get_server_link()
-            #         print(serverlink)
+#             print(serverlink)
             a.get_final_links(serverlink)
-    print(list(zip(a.final_dow_urls, a.options)))
+#     print(list(zip(a.final_dow_urls, a.options)))
+#     print(a.options)
+#     print(a.final_dow_urls)
     for url, opt in zip(a.final_dow_urls, a.options):
         scraper.download(url, opt)
+
