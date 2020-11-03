@@ -54,10 +54,10 @@ class scraper:
             print(tabulate(servers, headers="firstrow"))
             opt = int(input('Enter server number: '))
             setattr(self, 'server_opt', opt)
-            
+
         if self.server_opt == 'downloader':
             return option_list
-        else :
+        else:
             return option_list[self.server_opt]
 
     # sample SERVER url returned is like https://haloani.ru/Theta-Original-v4/d.php?q=f7ynJF1F1beE-b0beC4UUk_2j3EeFojNSJD90rofQIg    
@@ -170,13 +170,13 @@ class scraper:
 
         elif server == 'Beta-Server':
             scraper._kickassanimex(self, link)
-# betaserver1 doesn't work (no links)
+        # betaserver1 doesn't work (no links)
         elif server == 'mobile-v2':
             scraper._betaserver(self, link)
-            
+
         elif server == 'Theta-Original':
             scraper._kickassanimex(self, link)
-            
+
         else:
             print('Not supported')
             print(self.server)
@@ -189,49 +189,55 @@ class scraper:
 
 
 class downloader:
-    def __init__(self, url, start, end, opt = 'low'):
+    def __init__(self, url, start, end, opt='low'):
         self.mode = opt
         self.anime_url = url
         self.start = start
         self.end = end
-        
-    @property    
+
+    @property
     def fetch_episodes(self):
         for i in range(self.start, self.end + 1):
             yield f"{self.anime_url}episode-{i:0>2d}"
 
-    priority = {'low' : {'Kickassanimev2' : 1, 'KickAssAnimeX' : 2, 'Beta-Server' : 1, 'BetaServer3' : 1, 'mobile-v2' : -1} }
-    
+    priority = {'low': {'Kickassanimev2': 1, 'KickAssAnimeX': 2, 'Beta-Server': 1, 'BetaServer3': 1, 'mobile-v2': -1}}
+
     def make_downloads(self):
         priority_list = list(downloader.priority[self.mode].keys())
-        var = scraper("https://www3.animepace.si/anime/enen-no-shouboutai-ni-no-shou/episode-01")
+        var = scraper("https://www3.animepace.si/anime/noblesse/episode-04")
         var.server_opt = "downloader"
         for i in self.fetch_episodes:
             var.orig_url = i
-            serverlinks = var.get_server_link() #only for "downloader" it gives the whole list of servers
+            serverlinks = var.get_server_link()  # only for "downloader" it gives the whole list of servers
             pattern = r'(https:\/\/haloani.ru\/)([A-Za-z-1-9.]+)(\/[^=]+)'
             servers = []
-            for i in serverlinks:
-                servers += [re.search(pattern, i).group(2)]
+            for k in serverlinks:
+                servers += [re.search(pattern, k).group(2)]
+            flag = 10
             for j, i in enumerate(servers):
                 if i in priority_list:
                     print('yes')
-                    needed_server = serverlinks[j]
-                    var.quality = downloader.priority[self.mode][i]
-                    break
-                else :
+                    if priority_list.index(i) < flag:
+                        flag = priority_list.index(i)
+                        needed_server = serverlinks[j]
+                        var.quality = downloader.priority[self.mode][i]
+                    else:
+                        pass
+                else:
                     print('no')
             try:
+#                print(needed_server)
                 var.get_final_links(needed_server)
             except:
                 print('server not found')
                 continue
             print()
-#         print(list(zip(var.final_dow_urls, var.options)))
+#        print(list(zip(var.final_dow_urls, var.options)))
         if input("download now? y/n: ") == 'y':
             for url, opt in zip(var.final_dow_urls, var.options):
                 scraper.download(url, opt)
-        
+
+
 if __name__ != '__main__':
     a = scraper('https://www3.animepace.si/anime/akudama-drive/episode-01')
     print(a.name)
@@ -239,15 +245,13 @@ if __name__ != '__main__':
         for i in range(15, 17):
             a.orig_url = "https://www3.animepace.si/anime/enen-no-shouboutai-ni-no-shou/episode-{}".format(i)
             serverlink = a.get_server_link()
-#             print(serverlink)
+            #             print(serverlink)
             a.get_final_links(serverlink)
-#     print(list(zip(a.final_dow_urls, a.options)))
-#     print(a.options)
-#     print(a.final_dow_urls)
+    #     print(list(zip(a.final_dow_urls, a.options)))
+    #     print(a.options)
+    #     print(a.final_dow_urls)
     for url, opt in zip(a.final_dow_urls, a.options):
         scraper.download(url, opt)
-else :
-    a = downloader("https://www3.animepace.si/anime/enen-no-shouboutai-ni-no-shou/", 15,16 )
+else:
+    a = downloader("https://www3.animepace.si/anime/noblesse/", 3, 3)
     downloader.make_downloads(a)
-#     for j in a.fetch_episodes():
-#         print(j)
