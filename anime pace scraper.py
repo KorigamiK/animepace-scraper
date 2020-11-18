@@ -3,9 +3,9 @@ from bs4 import BeautifulSoup as bs
 import base64
 import subprocess
 import re
+import csv
 # import os # will add ability to set download location
 from tabulate import tabulate
-from multiprocessing.pool import ThreadPool
 
 
 class scraper:
@@ -62,7 +62,12 @@ class scraper:
 
     # sample SERVER url returned is like https://haloani.ru/Theta-Original-v4/d.php?q=f7ynJF1F1beE-b0beC4UUk_2j3EeFojNSJD90rofQIg    
     def get_server_link(self):
-        return scraper.get_animopace(self, scraper.animepace_get_servers(self))
+        r = scraper.get_animopace(self, scraper.animepace_get_servers(self))
+        if r:
+            return r
+        else:
+            print(f"{self.episode} not available. It will be skipped")
+            return [None]  # because we iterate through it
 
     def _kickassanimex(self, link):
         html = requests.get(link).text
@@ -198,22 +203,38 @@ class downloader:
     @property
     def fetch_episodes(self):
         for i in range(self.start, self.end + 1):
-            yield f"{self.anime_url}episode-{i:0>2d}"
+            if len(str(i)) <= 2:
+                yield f"{self.anime_url}episode-{i:0>2d}"
+            else:
+                yield f"{self.anime_url}episode-{i}"
 
-    priority = {'low': {'Kickassanimev2': 1, 'KickAssAnimeX': 2, 'Beta-Server': 1, 'BetaServer3': 1, 'mobile-v2': -1}}
+    priority = {'low': {'Kickassanimev2': 1, 'KickAssAnimeX': 3, 'Beta-Server': 1, 'BetaServer3': 2, 'mobile-v2': -1}}
 
     def make_downloads(self):
         priority_list = list(downloader.priority[self.mode].keys())
-        var = scraper("https://www3.animepace.si/anime/noblesse/episode-04")
+        var = scraper(self.anime_url + "episode-04")
         var.server_opt = "downloader"
+        f = self.start
         for i in self.fetch_episodes:
+            toggle_no_new_episodes = False
+            print(f'fetching {f}')
+            f += 1
             var.orig_url = i
-            serverlinks = var.get_server_link()  # only for "downloader" it gives the whole list of servers
+            serverlinks = var.get_server_link()  # only for "downloader" class it gives the whole list of servers
             pattern = r'(https:\/\/haloani.ru\/)([A-Za-z-1-9.]+)(\/[^=]+)'
             servers = []
             for k in serverlinks:
-                servers += [re.search(pattern, k).group(2)]
-            flag = 10
+                if k:
+                    servers += [re.search(pattern, k).group(2)]
+                else:
+                    print('skipping')
+                    toggle_no_new_episodes = True
+                    break
+            if toggle_no_new_episodes:
+                break
+            else:
+                pass
+            flag = 10  # arbitrary large number
             for j, i in enumerate(servers):
                 if i in priority_list:
                     print('yes')
@@ -226,24 +247,29 @@ class downloader:
                 else:
                     print('no')
             try:
-#                print(needed_server)
+                print(re.search(pattern, needed_server).group(2))
                 var.get_final_links(needed_server)
-            except:
-                print('server not found')
+            except Exception as e:
+                print('server/ quality not found, trying any available quality')
+                print(e)
+                var.quality = -1
+                var.get_final_links(needed_server)
                 continue
             print()
-#        print(list(zip(var.final_dow_urls, var.options)))
+        with open("all_links.txt", "a") as file:
+            write = csv.writer(file)
+            write.writerows(list(zip(var.final_dow_urls, var.options)))
         if input("download now? y/n: ") == 'y':
             for url, opt in zip(var.final_dow_urls, var.options):
                 scraper.download(url, opt)
 
 
 if __name__ != '__main__':
-    a = scraper('https://www3.animepace.si/anime/akudama-drive/episode-01')
+    a = scraper('https://www3.animepace.si/anime/vinland-saga/episode-01')
     print(a.name)
     if a.host == 'www3.animepace.si':
-        for i in range(15, 17):
-            a.orig_url = "https://www3.animepace.si/anime/enen-no-shouboutai-ni-no-shou/episode-{}".format(i)
+        for i in range(19, 20):
+            a.orig_url = "https://www3.animepace.si/anime/vinland-saga/episode-{}".format(i)
             serverlink = a.get_server_link()
             #             print(serverlink)
             a.get_final_links(serverlink)
@@ -253,5 +279,5 @@ if __name__ != '__main__':
     for url, opt in zip(a.final_dow_urls, a.options):
         scraper.download(url, opt)
 else:
-    a = downloader("https://www3.animepace.si/anime/noblesse/", 3, 3)
+    a = downloader(input("Enter anime url: "), int(input("Enter start number: ")), int(input("Enter end number: ")))
     downloader.make_downloads(a)
