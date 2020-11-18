@@ -208,7 +208,8 @@ class downloader:
             else:
                 yield f"{self.anime_url}episode-{i}"
 
-    priority = {'low': {'Kickassanimev2': 1, 'KickAssAnimeX': 3, 'Beta-Server': 1, 'BetaServer3': 2, 'mobile-v2': -1}}
+    priority = {'low': {'Kickassanimev2': 1, 'KickAssAnimeX': 3, 'Beta-Server': 1, 'BetaServer3': 2, 'mobile-v2': -1,
+                        'Theta-Original': -1, }}
 
     def make_downloads(self):
         priority_list = list(downloader.priority[self.mode].keys())
@@ -264,7 +265,33 @@ class downloader:
                 scraper.download(url, opt)
 
 
-if __name__ != '__main__':
+class searcher:
+    def __init__(self, search_input):
+        self.query = search_input
+
+    def _call_api(self):
+        response = requests.post("https://www3.animepace.si/search", data={"keyword": self.query})
+        return response.json()
+
+    def print_search(self):  # also returns url
+        links = []
+        for j, i in enumerate(search_and_get._call_api()):
+            print(j, i["name"])
+            links.append(i["slug"])
+        inp = int(input("Enter anime number: "))
+        return f'https://www3.animepace.si/anime/{links[inp]}/'
+
+    def download_from_search(self):
+        var = downloader(self.print_search(), int(input("Enter start number: ")), int(input("Enter end number: ")))
+        downloader.make_downloads(var)
+
+
+if __name__ == '__main__':
+    x = {1: "use code", 2: "use url and download", 3: "search and download"}
+    for i, j in x.items():
+        print(i, j)
+    option_input = int(input("Enter option number"))
+if option_input == 1:
     a = scraper('https://www3.animepace.si/anime/vinland-saga/episode-01')
     print(a.name)
     if a.host == 'www3.animepace.si':
@@ -278,6 +305,11 @@ if __name__ != '__main__':
     #     print(a.final_dow_urls)
     for url, opt in zip(a.final_dow_urls, a.options):
         scraper.download(url, opt)
-else:
+elif option_input == 2:
     a = downloader(input("Enter anime url: "), int(input("Enter start number: ")), int(input("Enter end number: ")))
     downloader.make_downloads(a)
+elif option_input == 3:
+    search_and_get = searcher(input("Enter anime name: "))
+    search_and_get.download_from_search()
+else:
+    print("not implemented yet.")
