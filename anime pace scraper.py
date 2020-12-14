@@ -151,7 +151,11 @@ class scraper:
 
     # Thank you Arjix for helping me figure out this
     def get_final_links(self, link):  # link here is for server
-        server = link.split('https://haloani.ru')[1].split('/')[1]
+        try:
+            server = link.split('https://haloani.ru')[1].split('/')[1]
+        except:
+            print("Its the new server kaa-play")
+            server =link.split('https://kaa-play.com')[1].split('/')[1]
         self.server = server
         if server == 'KickAssAnimeX':
             scraper._kickassanimex(self, link)
@@ -181,10 +185,12 @@ class scraper:
 
         elif server == 'Theta-Original':
             scraper._kickassanimex(self, link)
-
+        elif server == 'kickassanime1':
+            print('mightnot work')
+            scraper._kickassanimex(self,link)
         else:
             print('Not supported')
-            print(self.server)
+            print(self.server, link)
             return None
 
     @staticmethod
@@ -208,7 +214,7 @@ class downloader:
             else:
                 yield f"{self.anime_url}episode-{i}"
 
-    priority = {'low': {'Kickassanimev2': 1, 'KickAssAnimeX': 3, 'Beta-Server': 1, 'BetaServer3': 2, 'mobile-v2': -1,
+    priority = {'low': {'Kickassanimev2': 1, 'KickAssAnimeX': 0, 'Beta-Server': 1, 'BetaServer3': 2, 'mobile-v2': -1,
                         'Theta-Original': -1, }}
 
     def make_downloads(self):
@@ -218,20 +224,30 @@ class downloader:
         f = self.start
         for i in self.fetch_episodes:
             toggle_no_new_episodes = False
-            print(f'fetching {f}')
+            episode_error = False
+            print(f'Fetching {f}')
             f += 1
             var.orig_url = i
-            serverlinks = var.get_server_link()  # only for "downloader" class it gives the whole list of servers
+            try:
+                serverlinks = var.get_server_link()  # only for "downloader" class it gives the whole list of servers
+            except:
+                print("Episode error")
+                serverlinks = [None]
+                episode_error = True
             pattern = r'(https:\/\/haloani.ru\/)([A-Za-z-1-9.]+)(\/[^=]+)'
             servers = []
+            pattern2 = r'(https:\/\/kaa-play.com\/)([A-Za-z-1-9.]+)(\/[^=]+)'
             for k in serverlinks:
                 if k:
-                    servers += [re.search(pattern, k).group(2)]
+                    try:
+                        servers += [re.search(pattern, k).group(2)]
+                    except:
+                        servers += [re.search(pattern2, k).group(2)]
                 else:
                     print('skipping')
                     toggle_no_new_episodes = True
                     break
-            if toggle_no_new_episodes:
+            if toggle_no_new_episodes or episode_error:
                 break
             else:
                 pass
@@ -248,7 +264,11 @@ class downloader:
                 else:
                     print('no')
             try:
-                print(re.search(pattern, needed_server).group(2))
+                try:
+                    print(re.search(pattern, needed_server).group(2))
+                except:
+                    print(re.search(pattern2, needed_server).group(2))
+                    
                 var.get_final_links(needed_server)
             except Exception as e:
                 print('server/ quality not found, trying any available quality')
@@ -257,12 +277,15 @@ class downloader:
                 var.get_final_links(needed_server)
                 continue
             print()
-        with open("all_links.txt", "a") as file:
-            write = csv.writer(file)
-            write.writerows(list(zip(var.final_dow_urls, var.options)))
+        downloader.csv_updater(var.final_dow_urls, var.options)
         if input("download now? y/n: ") == 'y':
             for url, opt in zip(var.final_dow_urls, var.options):
                 scraper.download(url, opt)
+    @staticmethod
+    def csv_updater(dow_links, dow_opts):
+        with open("all_links.txt", "a") as file:
+            write = csv.writer(file)
+            write.writerows(list(zip(dow_links,dow_opts)))
 
 
 class searcher:
@@ -279,7 +302,8 @@ class searcher:
             print(j, i["name"])
             links.append(i["slug"])
         inp = int(input("Enter anime number: "))
-        return f'https://www3.animepace.si/anime/{links[inp]}/'
+        self.url = f'https://www3.animepace.si/anime/{links[inp]}/'
+        return self.url
 
     def download_from_search(self):
         var = downloader(self.print_search(), int(input("Enter start number: ")), int(input("Enter end number: ")))
@@ -290,19 +314,27 @@ if __name__ == '__main__':
     x = {1: "use code", 2: "use url and download", 3: "search and download"}
     for i, j in x.items():
         print(i, j)
-    option_input = int(input("Enter option number"))
+    option_input = int(input("Enter option number: "))
 if option_input == 1:
-    a = scraper('https://www3.animepace.si/anime/vinland-saga/episode-01')
+    if input("Search? y/n : ") == 'y':
+        search_and_get = searcher(input("Enter anime name: "))
+        a = scraper(search_and_get.print_search())
+        dummy_url = search_and_get.url
+    else:
+        dummy_url = input("Enter url: ")[:-10]
+        a = scraper(dummy_url)
     print(a.name)
     if a.host == 'www3.animepace.si':
-        for i in range(19, 20):
-            a.orig_url = "https://www3.animepace.si/anime/vinland-saga/episode-{}".format(i)
+        for i in range(int(input('Enter starting: ')), int(input('Enter ending: '))+1):
+            a.orig_url = f"{dummy_url}episode-{i:02d}"
+            print(a.orig_url)
             serverlink = a.get_server_link()
             #             print(serverlink)
             a.get_final_links(serverlink)
     #     print(list(zip(a.final_dow_urls, a.options)))
     #     print(a.options)
     #     print(a.final_dow_urls)
+    downloader.csv_updater(a.final_dow_urls, a.options)
     for url, opt in zip(a.final_dow_urls, a.options):
         scraper.download(url, opt)
 elif option_input == 2:
@@ -313,3 +345,4 @@ elif option_input == 3:
     search_and_get.download_from_search()
 else:
     print("not implemented yet.")
+
