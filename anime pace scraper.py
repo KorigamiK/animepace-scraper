@@ -151,9 +151,14 @@ class scraper:
         soup = bs(html, "html.parser")
         dow_urls_allqualities = []
         flag = True
-        for j, i in enumerate(soup.find_all("a", rel="nofollow")):
+        data = soup.find_all("a", rel="nofollow")
+        if len(data) == 0:
+            raise Exception
+        else:
+            pass
+        for j, i in enumerate(data):
             try:
-                self.quality
+                assert self.quality
                 flag = False
             except:
                 print(j, i.text)
@@ -173,27 +178,29 @@ class scraper:
         links = []
         for i in soup.find_all("a"):
             links.append((i.text, i["href"]))
-        #             flag = True
         try:
             assert self.quality
-        #             flag = False
         except Exception:
             for j, i in enumerate(links):
                 print(j, i[0])
-            self.quality = int(input("Enter quality: "))
+            self.quality = int(input("Enter quality number: "))
         self.final_dow_urls += [links[self.quality][1]]
         self.options += [
             f"-O {(self.name + ' ' + self.episode + '.mp4').replace(' ', '_')}"
         ]
-        print(self.final_dow_urls)
 
-    # Thank you Arjix for helping me figure out this
     def get_final_links(self, link):  # link here is for server
+        print(link)
         try:
             server = link.split("https://haloani.ru")[1].split("/")[1]
         except:
-            print("Its the new server kaa-play")
-            server = link.split("https://kaa-play.com")[1].split("/")[1]
+            try:
+                print("Its the new server kaa-play")
+                server = link.split("https://kaa-play.com")[1].split("/")[1]
+            except:
+                print(f"bad serverlink {link}")
+                return
+            
         self.server = server
         if server == "KickAssAnimeX":
             scraper._kickassanimex(self, link)
@@ -233,7 +240,6 @@ class scraper:
         elif server == "a-kickassanime":
             scraper._kickassanimex(self, link)
         elif server == "html5":
-            print(link)
             scraper._html5(self, link)
         else:
             print("Not supported")
@@ -242,7 +248,9 @@ class scraper:
 
     @staticmethod
     def download(link, options):
-        query = f"""wget "{link}" -q --show-progress --no-check-certificate {options}"""
+#         query = f"""wget "{link}" -q --show-progress --no-check-certificate {options}"""
+        query = f"""wget "{link}" --no-check-certificate {options}"""
+
         subprocess.run(query, shell=True)
 
 
@@ -268,9 +276,9 @@ class downloader:
             "Beta-Server": 1,
             "BetaServer3": 2,
             "mobile-v2": -1,
-            "a-kickassanime": -1,
-            "Theta-Original": -1,
             "html5": -1,
+            "a-kickassanime": -1,            
+            "Theta-Original": -1,
         }
     }
 
@@ -279,6 +287,7 @@ class downloader:
         var = scraper(self.anime_url + "episode-04")
         var.server_opt = "downloader"
         f = self.start
+        backlisted_servers = [] # only index
         for i in self.fetch_episodes:
             toggle_no_new_episodes = False
             episode_error = False
@@ -301,7 +310,12 @@ class downloader:
                     try:
                         servers += [re.search(pattern, k).group(2)]
                     except:
-                        servers += [re.search(pattern2, k).group(2)]
+                        try:
+                            servers += [re.search(pattern2, k).group(2)]
+                        except:
+                            print(f"bad serverlink {k}")
+                            serverlinks.remove(k)
+                            continue
                 else:
                     print("skipping")
                     toggle_no_new_episodes = True
@@ -314,7 +328,7 @@ class downloader:
             for j, i in enumerate(servers):
                 if i in priority_list:
                     print("yes")
-                    if priority_list.index(i) <= flag:
+                    if priority_list.index(i) < flag:
                         flag = priority_list.index(i)
                         needed_server = serverlinks[j]
                         var.quality = downloader.priority[self.mode][i]
@@ -330,13 +344,20 @@ class downloader:
 
                 var.get_final_links(needed_server)
             except Exception as e:
-                print(
-                    f"server/ quality not found, trying any available quality, with error {e}"
-                )
-                print()
-                var.quality = -1
-                var.get_final_links(needed_server)
-                continue
+                try:
+                    print(
+                        f"server/ quality not found, trying any available quality, with error {e}"
+                    )
+                    print()
+                    var.quality = -1
+                    var.get_final_links(needed_server)
+                    continue
+                except:
+                    print('found bad server. trying another one...')
+                    var.quality = -1
+                    serverlinks.remove(needed_server)
+                    var.get_final_links(serverlinks[-1])
+                    continue
             print()
         downloader.csv_updater(var.final_dow_urls, var.options)
         if input("download now? y/n: ") == "y":
@@ -405,8 +426,11 @@ if option_input == 1:
     #     print(a.options)
     #     print(a.final_dow_urls)
     downloader.csv_updater(a.final_dow_urls, a.options)
-    for url, opt in zip(a.final_dow_urls, a.options):
-        scraper.download(url, opt)
+    if input('download now y/n? :') == 'y':
+        for url, opt in zip(a.final_dow_urls, a.options):
+            scraper.download(url, opt)
+    else:
+        pass
 elif option_input == 2:
     a = downloader(
         input("Enter anime url: "),
@@ -419,4 +443,5 @@ elif option_input == 3:
     search_and_get.download_from_search()
 else:
     print("not implemented yet.")
+
 
